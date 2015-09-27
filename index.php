@@ -34,7 +34,7 @@ if(isset($_POST["generatekey"])){
 	$rank = $mysqli->real_escape_string($_POST["rank"]);
 	if(in_array($rank, $usergroups)){
 	$skey = generateRandomString(25);
-	generatekey($skey, $rank);
+	generatekey($skey, $rank, $mysqli);
 	}else{
 		if($rank == "ass"){
 			echo "Yes you are an..";
@@ -45,9 +45,8 @@ if(isset($_POST["generatekey"])){
  }
 }
 
-function generatekey($string, $rank){
+function generatekey($string, $rank, $mysqli){
 
-	/$mysqli = new mysqli("host", "username", "password", "database") or die("An error accured while trying to connnect to the databse");
 	$rows = $mysqli->query("SELECT * FROM key_hash")->num_rows;
 	$new = "$string$rows";
 	$escaped_rank = $mysqli->real_escape_string($rank);
