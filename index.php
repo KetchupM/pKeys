@@ -18,7 +18,7 @@
 <?php 
 
 
-$mysqli = new mysqli("host", "user", "password", "database", 3360);
+$mysqli = new mysqli("host", "user", "password", "database");
 
 $rquery = $mysqli->query("SELECT * FROM key_hash");	
 
