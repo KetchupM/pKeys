@@ -18,7 +18,7 @@
 <?php 
 
 
-$mysqli = new mysqli("host", "user", "password", "database") or die("An error accured while trying to connnect to the databse");
+$mysqli = new mysqli("host", "user", "password", "database", 3360);
 
 $rquery = $mysqli->query("SELECT * FROM key_hash");	
 
