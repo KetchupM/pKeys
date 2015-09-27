@@ -1,0 +1,5 @@
+CREATE TABLE key_hashes
+(`ID` int AUTO_INCREMENT, `hash` varchar(50), `reward` varchar(50), PRIMARY KEY(`ID`))
+;
+
+//Run this in your database
