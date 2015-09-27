@@ -46,8 +46,8 @@ if(isset($_POST["generatekey"])){
 }
 
 function generatekey($string, $rank){
-
-	/$mysqli = new mysqli("host", "username", "password", "database") or die("An error accured while trying to connnect to the databse");
+	//don't ask my why I have two connections. IF I didn't add the connection below it wouldn't work
+	$mysqli = new mysqli("host", "username", "password", "database") or die("An error accured while trying to connnect to the databse");
 	$rows = $mysqli->query("SELECT * FROM key_hash")->num_rows;
 	$new = "$string$rows";
 	$escaped_rank = $mysqli->real_escape_string($rank);
