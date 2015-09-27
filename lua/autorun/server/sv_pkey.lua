@@ -4,20 +4,40 @@ util.AddNetworkString("pKeysGenerateKey")
 util.AddNetworkString("pKeysUserMenu")
 util.AddNetworkString("pKeysRedeemKey")
 
+require("mysqloo")
+if(mysqloo) then
+	MsgN("Mysqlo has succesfully been included")
+else
+	MsgN("Mysqloo couldn't be included. Check that you have the module")
+	return
+end
 --Make sure that the folder to hold keys in actually exists
-file.CreateDir("pkeys")
+local db = mysqloo.connect("host", "user", "password", "database", 3306)
+function db:onConnected()
+	print("Succesfully connected")
+end
 
 --Helper function to update easily without repeating code
 local function SendGUI( ply )
-	local files = {}
-	for k,v in pairs( file.Find( "pkeys/*.txt", "DATA" ) ) do
-		local contents = file.Read( "pkeys/" .. v )
-		table.insert( files, { v, contents } )
+	local hashes = {}
+	local q = db:query("SELECT * FROM key_hash")
+	
+	
+	function q:onError(q, err, sql)
+		print("We got an error")
+		print(err .. "\n")
+		return
 	end
-
-	net.Start("pKeysAdminMenu")
-		net.WriteTable( files )
-	net.Send( ply )
+	function q:onSuccess()
+		local data = self:getData()
+		for k, v in pairs(data) do
+			table.insert(hashes, {hash=v.hash, reward=v.reward})	
+		end
+			net.Start("pKeysAdminMenu")
+				net.WriteTable( hashes )
+			net.Send( ply )
+	end
+	q:start()
 end
 
 hook.Add("PlayerSay", "pKeysCommand", function( ply, text, team )
@@ -44,9 +64,15 @@ net.Receive( "pKeysDestroyKey", function( len, ply )
 	if not table.HasValue( pKey.permissions, ply:GetUserGroup() ) then return end
 
 	local key = net.ReadString()
-	file.Delete( "pkeys/" .. key )
-	
-	SendGUI( ply )
+	local re = db:query("DELETE FROM `key_hash` WHERE `hash`='".. db:escape(key) .."'")
+		function re:onSuccess()
+			print("We succesfully removed the key(" .. key .. ")")
+			SendGUI(ply)
+		end
+		function re:onError(q,err)
+			print(err)
+		end
+		re:start()
 end )
 
 net.Receive( "pKeysGenerateKey", function( len, ply )
@@ -58,9 +84,19 @@ net.Receive( "pKeysGenerateKey", function( len, ply )
 	--Make sure the rank that's being generated is allowed
 	--to have a key generated for it
 	if table.HasValue( pKey.canGenerate, rank ) then
-		file.Write( "pkeys/" .. generateKey() .. ".txt", rank )
+		local q = db:query("INSERT INTO `key_hash` (`hash`, `reward`) VALUES('" .. db:escape(generateKey()) .. "', '".. rank .."')");
+		function q:onSuccess()
+			print("Succesfully inserted a new hash");
+		end
+		function q:onError(q, err, sql)
+			print("We encountered an error while inserting new data");
+			print(err)
+			
+			return 
+		end
+		q:start()
+		print("started the query")
 	end
-
 	SendGUI( ply )
 end )
 
@@ -91,6 +127,7 @@ function generateKey()
 end
 
 net.Receive( "pKeysRedeemKey", function( len, ply )
+	local text = net.ReadString()
 	--Setup the cooldown if this is the first time
 	if not ply.cooldown then
 		ply.cooldown = CurTime() - 1
@@ -105,29 +142,34 @@ net.Receive( "pKeysRedeemKey", function( len, ply )
 		end
 		return
 	end
-	
+
 	--Set the cooldown
 	ply.cooldown = CurTime() + pKey.cooldownTime
-	
-	--Find the files with that key name
-	local files = file.Find( "pkeys/" .. net.ReadString(), "DATA" )
-	
-	--See if we've got a result
-	if #files > 0 then
-		--Read the contents of the file
-		local contents = file.Read( "pkeys/" .. files[1], "DATA" )
 		
+	--Find the files with that key name
+	local q = db:query("SELECT * FROM `key_hash` WHERE `hash`='".. db:escape(text) .."'")
+	function q:onSuccess()
+		local data = q:getData()
+		PrintTable(data)
+		if #data > 0 then
+		--Read the contents of the file	
 		--Add the user to the rank
-		RunConsoleCommand( "ulx", "adduser", ply:Nick(), contents )
+		RunConsoleCommand( "ulx", "adduser", ply:Nick(), data[1].reward )
 		
 		--Since they're redeeming a key, remove it
-		file.Delete( "pkeys/" .. files[1] )
-		
+		local re = db:query("DELETE FROM `key_hash` WHERE `hash`='".. db:escape(text) .."'")
+		function re:onSuccess()
+			print("We succesfully removed the key")
+		end
+		function re:onError(q,err)
+			print(err)
+		end
+		re:start()
 		--Notify the user
 		if pKey.darkRP then
-			DarkRP.notify( ply, 0, 3, pKey.added .. contents )
+			DarkRP.notify( ply, 0, 3, pKey.added .. tostring(data[1].reward) )
 		else
-			ply:ChatPrint( pKey.added .. contents )
+			ply:ChatPrint( pKey.added .. tostring(data[1].reward) )
 		end
 	else
 		--If we couldn't find the key, tell the user
@@ -137,4 +179,10 @@ net.Receive( "pKeysRedeemKey", function( len, ply )
 			ply:ChatPrint( pKey.notFound )
 		end
 	end
-end )
+	end
+	function q:onError(q, err)
+		print(err)
+	end
+	q:start()
+end)
+db:connect()
