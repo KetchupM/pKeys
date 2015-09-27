@@ -1,6 +1,6 @@
 net.Receive( "pKeysAdminMenu", function()
 	local keys = net.ReadTable()
-
+	print(#keys)
 	local DFrame = vgui.Create( "DFrame" )
 	DFrame:SetSize( 400, 300 )
 	DFrame:Center()
@@ -56,19 +56,20 @@ net.Receive( "pKeysAdminMenu", function()
 	DButton:SetPos( DFrame:GetWide() - 100, 35 )
 	DButton.DoClick = function()
 		local line = DListView:GetSelectedLine()
+		if(DListView:GetLine(line)) then
 		local value = DListView:GetLine( line ):GetValue( 1 )
-
-		net.Start("pKeysDestroyKey")
-			net.WriteString( value .. ".txt" )
-		net.SendToServer()
 		
+		net.Start("pKeysDestroyKey")
+			net.WriteString( value )
+		net.SendToServer()
 		DFrame:Remove()
+		end
 	end
 	
 	--If there's any keys add them so the admin can see
 	if #keys > 0 then
 		for k,v in pairs( keys ) do
-			DListView:AddLine( string.StripExtension( v[1] ), v[2] )
+			DListView:AddLine( string.StripExtension( v.hash ), v.reward )
 		end
 	end
 end )
@@ -98,7 +99,7 @@ net.Receive( "pKeysUserMenu", function()
 		net.Start("pKeysRedeemKey")
 			local value = DTextEntry:GetValue()
 		
-			net.WriteString( value .. ".txt" )
+			net.WriteString( tostring(value) )
 		net.SendToServer()
 		
 		DFrame:Remove()
@@ -113,6 +114,6 @@ concommand.Add( pKey.consoleCommand, function( ply, cmd, arg )
 	end
 
 	net.Start("pKeysRedeemKey")	
-		net.WriteString( arg[1] .. ".txt" )
+		net.WriteString( tostring(arg[1]))
 	net.SendToServer()	
 end )
